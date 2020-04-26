@@ -8,19 +8,16 @@ namespace FileWatcher
 {
     class Program
     {
-        //readonly static string sourceLocation = @"..\mobirise-template";
-        //readonly static string destinationSourceLocation = @"..\mobirise-angular-integration\src";
-        //readonly static string destinationProjectLocation = @"..\mobirise-angular-integration";
-        //readonly static string mainContainerFile = @"..\mobirise-angular-integration\src\app\main-container\main-container.component.html";
-        readonly static string sourceLocation = @"C:\Users\Mark\Documents\mobirise-angular\mobirise-template";
-        readonly static string destinationSourceLocation = @"C:\Users\Mark\Documents\mobirise-angular\mobirise-angular-integration\src";
-        readonly static string destinationProjectLocation = @"C:\Users\Mark\Documents\mobirise-angular\mobirise-angular-integration";
-        readonly static string mainContainerFile = @"C:\Users\Mark\Documents\mobirise-angular\mobirise-angular-integration\src\app\main-container\main-container.component.html";
-
+        readonly static string sourceLocation = @"..\..\..\..\..\mobirise-template";
+        readonly static string destinationSourceLocation = @"..\..\..\..\..\mobirise-angular-integration\src";
+        readonly static string destinationProjectLocation = @"..\..\..\..\..\mobirise-angular-integration";
+        readonly static string mainContainerFile = @"..\..\..\..\..\mobirise-angular-integration\src\app\main-container\main-container.component.html";
+        
         static void Main(string[] args)
         {
+            Console.WriteLine("started FileWatcher");
             RunProjectInitial();
-            Console.WriteLine("Filewatcher is running");
+            Console.WriteLine("Filewatcher is running properly");
             Console.WriteLine("Press any key to stop fileWatcher");
             FileSystemWatcher watcher = InitialiseFileWatcher();
             watcher.Changed += new FileSystemEventHandler(OnFileChanged);
@@ -81,27 +78,37 @@ namespace FileWatcher
 
         private static void CreateComponentForEverySection()
         {
-            var sections = GetSectionsFromHTML();
-            ClearMainContainer();
-            foreach (var section in sections)
+            if (WaitForFile(sourceLocation + @"\index.html"))
             {
-                string componentCode = section.OuterHtml;
-                string componentName = new string(section.Id.Where(char.IsLetter).ToArray()).ToLower();
-                if (componentName == "")
+                var sections = GetSectionsFromHTML();
+                ClearMainContainer();
+                if (sections != null)
                 {
-                    Console.WriteLine("---------------------------------");
-                    Console.WriteLine("Could not create the following section because it misses an id");
-                    Console.WriteLine("***");
-                    Console.WriteLine(section.OuterHtml);
-                    Console.WriteLine("***");
-                    Console.WriteLine("---------------------------------");
-                } else
-                {
-                    CreateComponentFromCommandLine(componentName);
-                    CopySectionCodeToComponentTemplate(componentName, componentCode);
-                    AddToMainContainer(componentName);
+                    foreach (var section in sections)
+                    {
+                        string componentCode = section.OuterHtml;
+                        string componentName = new string(section.Id.Where(char.IsLetter).ToArray()).ToLower();
+                        if (componentName == "")
+                        {
+                            Console.WriteLine("---------------------------------");
+                            Console.WriteLine("Thats a standart message you dont have to worry");
+                            Console.WriteLine("Could not create the following section because it misses an id");
+                            Console.WriteLine("***");
+                            Console.WriteLine(section.OuterHtml);
+                            Console.WriteLine("***");
+                            Console.WriteLine("---------------------------------");
+                        }
+                        else
+                        {
+                            CreateComponentFromCommandLine(componentName);
+                            CopySectionCodeToComponentTemplate(componentName, componentCode);
+                            AddToMainContainer(componentName);
+                        }
+                    }
                 }
             }
+            
+            
 
         }
 
@@ -116,6 +123,7 @@ namespace FileWatcher
             var document = new HtmlDocument();
             document.LoadHtml(text);
             HtmlNodeCollection sections = document.DocumentNode.SelectNodes("//html/body/section");
+
             return sections;
         }
 
@@ -224,28 +232,32 @@ namespace FileWatcher
 
         private static void WriteToHtml(string destination, HtmlNodeCollection sourceHeadCollection, HtmlNodeCollection sourceScriptCollection )
         {
-            File.WriteAllText(destination, "");
-            File.AppendAllText(destination, "<!DOCTYPE html>" + "\n");
-            File.AppendAllText(destination, "<html>" + "\n");
-            File.AppendAllText(destination, "<head>" + "\n");
-            File.AppendAllText(destination, "<base href='/'>" + "\n");
-
-            foreach (var item in sourceHeadCollection)
+            if (sourceHeadCollection != null && sourceScriptCollection != null)
             {
-                File.AppendAllText(destination, item.InnerHtml + "\n");
+                File.WriteAllText(destination, "");
+                File.AppendAllText(destination, "<!DOCTYPE html>" + "\n");
+                File.AppendAllText(destination, "<html>" + "\n");
+                File.AppendAllText(destination, "<head>" + "\n");
+                File.AppendAllText(destination, "<base href='/'>" + "\n");
+
+                foreach (var item in sourceHeadCollection)
+                {
+                    File.AppendAllText(destination, item.InnerHtml + "\n");
+                }
+
+                File.AppendAllText(destination, "</head>" + "\n");
+                File.AppendAllText(destination, "<body>" + "\n");
+                File.AppendAllText(destination, "<app-root></app-root>" + "\n");
+
+                foreach (var item in sourceScriptCollection)
+                {
+                    File.AppendAllText(destination, item.OuterHtml + "\n");
+                }
+
+                File.AppendAllText(destination, "</body>" + "\n");
+                File.AppendAllText(destination, "</html>" + "\n");
             }
-
-            File.AppendAllText(destination, "</head>" + "\n");
-            File.AppendAllText(destination, "<body>" + "\n");
-            File.AppendAllText(destination, "<app-root></app-root>" + "\n");
-
-            foreach (var item in sourceScriptCollection)
-            {
-                File.AppendAllText(destination, item.OuterHtml + "\n");
-            }
-
-            File.AppendAllText(destination, "</body>" + "\n");
-            File.AppendAllText(destination, "</html>" + "\n");
+           
         }
 
         private static void ServeApplication()
@@ -258,6 +270,45 @@ namespace FileWatcher
                 Arguments = "/c ng serve"
             };
             Process.Start(processStartInfo);
+        }
+
+        private static bool WaitForFile(string fullPath)
+        {
+            int numTries = 0;
+            while (true)
+            {
+                ++numTries;
+                try
+                {
+                    // Attempt to open the file exclusively.
+                    using (FileStream fs = new FileStream(fullPath,
+                        FileMode.Open, FileAccess.ReadWrite,
+                        FileShare.None, 100))
+                    {
+                        fs.ReadByte();
+
+                        // If we got this far the file is ready
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (numTries > 10)
+                    {
+                        Console.WriteLine(
+                            "WaitForFile {0} giving up after 10 tries",
+                            fullPath);
+                        return false;
+                    }
+
+                    // Wait for the lock to be released
+                    System.Threading.Thread.Sleep(500);
+                }
+            }
+
+           Console.WriteLine("WaitForFile {0} returning true after {1} tries",
+                fullPath, numTries);
+            return true;
         }
     }
 }
