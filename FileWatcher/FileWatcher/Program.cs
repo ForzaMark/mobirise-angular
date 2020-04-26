@@ -15,10 +15,8 @@ namespace FileWatcher
         
         static void Main(string[] args)
         {
-            Console.WriteLine("started FileWatcher");
             RunProjectInitial();
-            Console.WriteLine("Filewatcher is running properly");
-            Console.WriteLine("Press any key to stop fileWatcher");
+            Console.WriteLine("watching for changes");
             FileSystemWatcher watcher = InitialiseFileWatcher();
             watcher.Changed += new FileSystemEventHandler(OnFileChanged);
             Console.ReadKey();
@@ -26,6 +24,7 @@ namespace FileWatcher
 
         private static void RunProjectInitial()
         {
+            Console.WriteLine("Load mobirise template on startup");
             CopyAssetDirectory();
             CreateComponentForEverySection();
             RemoveAllDeletedComponents();
@@ -47,6 +46,7 @@ namespace FileWatcher
 
         private static void OnFileChanged(object source, FileSystemEventArgs e)
         {
+            Console.WriteLine("File change detected");
             CopyAssetDirectory();
             CreateComponentForEverySection();
             RemoveAllDeletedComponents();
@@ -88,17 +88,7 @@ namespace FileWatcher
                     {
                         string componentCode = section.OuterHtml;
                         string componentName = new string(section.Id.Where(char.IsLetter).ToArray()).ToLower();
-                        if (componentName == "")
-                        {
-                            Console.WriteLine("---------------------------------");
-                            Console.WriteLine("Thats a standart message you dont have to worry");
-                            Console.WriteLine("Could not create the following section because it misses an id");
-                            Console.WriteLine("***");
-                            Console.WriteLine(section.OuterHtml);
-                            Console.WriteLine("***");
-                            Console.WriteLine("---------------------------------");
-                        }
-                        else
+                        if (componentName != "")
                         {
                             CreateComponentFromCommandLine(componentName);
                             CopySectionCodeToComponentTemplate(componentName, componentCode);
@@ -227,7 +217,7 @@ namespace FileWatcher
             HtmlNodeCollection scriptCollection = document.DocumentNode.SelectNodes("//html/body/script");
             HtmlNodeCollection headCollection = document.DocumentNode.SelectNodes("//html/head");
             string destination = destinationSourceLocation + @"\index.html";
-            WriteToHtml(destination, scriptCollection, headCollection);
+            WriteToHtml(destination, headCollection, scriptCollection);
         }
 
         private static void WriteToHtml(string destination, HtmlNodeCollection sourceHeadCollection, HtmlNodeCollection sourceScriptCollection )
@@ -280,14 +270,11 @@ namespace FileWatcher
                 ++numTries;
                 try
                 {
-                    // Attempt to open the file exclusively.
                     using (FileStream fs = new FileStream(fullPath,
                         FileMode.Open, FileAccess.ReadWrite,
                         FileShare.None, 100))
                     {
                         fs.ReadByte();
-
-                        // If we got this far the file is ready
                         break;
                     }
                 }
@@ -295,19 +282,11 @@ namespace FileWatcher
                 {
                     if (numTries > 10)
                     {
-                        Console.WriteLine(
-                            "WaitForFile {0} giving up after 10 tries",
-                            fullPath);
                         return false;
                     }
-
-                    // Wait for the lock to be released
                     System.Threading.Thread.Sleep(500);
                 }
             }
-
-           Console.WriteLine("WaitForFile {0} returning true after {1} tries",
-                fullPath, numTries);
             return true;
         }
     }
