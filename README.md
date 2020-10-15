@@ -8,7 +8,7 @@ Build yout Angular-HTML-Templates easily and fast with the help of the mobirise 
 - Angular
 
 # Getting Started
-1. Download this repository and extract it to the location of your choice.
+1. Download this repository as ZIP and extract it to the location of your choice.
 2. Run the `initialisation-script.cmd` file to initially setup your project.
 3. After the previous script has finished, run `start-change-detection-script.cmd`. 
     1. This will start the FileWatcher which listens for file changes in your Mobirise-Template and applies them to your Angular project.
